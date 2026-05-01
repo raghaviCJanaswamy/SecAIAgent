@@ -1,0 +1,19 @@
+# Non-sensitive configuration — safe to commit with real values.
+# No LLM endpoint config: GitHub Copilot acts on Issues natively in GitHub.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xray-agent-config
+  namespace: xray-agent
+  labels:
+    app.kubernetes.io/name: xray-agent
+data:
+  # GitHub Issue labels applied to every raised issue
+  ISSUE_LABEL: "security"
+  ISSUE_LABEL_AUTOFIX: "copilot-autofix"
+
+  # Minimum Xray severity to act on (Low | Medium | High | Critical)
+  MIN_SEVERITY: "Medium"
+
+  # Manifest files to scan in the target repo (comma-separated if overriding via env)
+  # Defaults handled in config.py: requirements.txt, pyproject.toml, Pipfile

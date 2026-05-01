@@ -1,0 +1,14 @@
+# PodDisruptionBudget — ensure at least 1 pod is always available during
+# node upgrades, drains, or voluntary disruptions.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: xray-agent
+  namespace: xray-agent
+  labels:
+    app.kubernetes.io/name: xray-agent
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xray-agent

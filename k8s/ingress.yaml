@@ -1,0 +1,48 @@
+# Ingress — uses the AWS Load Balancer Controller (ALB Ingress) on EKS.
+# Prerequisites:
+#   1. AWS Load Balancer Controller installed in the cluster
+#   2. ACM certificate ARN set below
+#   3. Replace <YOUR_DOMAIN> with your internal/external DNS name
+#
+# Exposes /health and /webhook only. Swagger UI (/docs) is disabled in prod
+# by uncommenting docs_url=None in api/main.py.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: xray-agent
+  namespace: xray-agent
+  labels:
+    app.kubernetes.io/name: xray-agent
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal          # private ALB — not internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Replace with your ACM certificate ARN:
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<REGION>:<ACCOUNT_ID>:certificate/<CERT_ID>"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    # Security: restrict access to VPC CIDR or specific security group
+    alb.ingress.kubernetes.io/inbound-cidrs: "10.0.0.0/8"
+spec:
+  rules:
+    - host: xray-agent.<YOUR_DOMAIN>
+      http:
+        paths:
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: xray-agent
+                port:
+                  name: http
+          - path: /webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: xray-agent
+                port:
+                  name: http

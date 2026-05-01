@@ -1,0 +1,75 @@
+# Docker Compose — local development & testing on Docker Desktop
+# Usage:
+#   cp .env.example .env   # fill in your credentials
+#   docker compose up --build
+#
+# Webhook endpoint: http://localhost:8080/webhook/xray
+# Health check:     http://localhost:8080/health
+# Swagger UI:       http://localhost:8080/docs
+
+version: "3.9"
+
+services:
+  xray-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: xray-agent:local
+    container_name: xray-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # GitHub — token needs Issues write + Contents read permissions
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+
+      # JFrog Xray webhook shared secret (set the same value in Xray webhook config)
+      XRAY_WEBHOOK_SECRET: ${XRAY_WEBHOOK_SECRET:-}
+
+      # JFrog Xray REST API (optional enrichment)
+      JFROG_URL: ${JFROG_URL:-}
+      JFROG_USERNAME: ${JFROG_USERNAME:-}
+      JFROG_PASSWORD: ${JFROG_PASSWORD:-}
+      JFROG_API_KEY: ${JFROG_API_KEY:-}
+
+      # Issue config
+      ISSUE_LABEL: ${ISSUE_LABEL:-security}
+      ISSUE_LABEL_AUTOFIX: ${ISSUE_LABEL_AUTOFIX:-copilot-autofix}
+      ISSUE_ASSIGNEES: ${ISSUE_ASSIGNEES:-}
+
+      # Agent tuning
+      MIN_SEVERITY: ${MIN_SEVERITY:-Medium}
+      MANIFEST_PATHS: ${MANIFEST_PATHS:-}
+
+    # Mount source for hot-reload during local development
+    volumes:
+      - ./agent:/app/agent:ro
+      - ./integrations:/app/integrations:ro
+      - ./tools:/app/tools:ro
+      - ./api:/app/api:ro
+      - ./config.py:/app/config.py:ro
+
+    command: >
+      uvicorn api.main:app
+        --host 0.0.0.0
+        --port 8080
+        --reload
+        --log-level debug
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
